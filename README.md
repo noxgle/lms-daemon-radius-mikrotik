@@ -1,9 +1,18 @@
-# lms-daemon-radius-mikrotik
+# ldrm
 
-#'%{NAS-Identifier}', '%{NAS-IP-Address}', '%{NAS-Port}', '%{NAS-Port-Type}', '%{Calling-Station-Id}', '%{Framed-IP-Address}', '%{Called-Station-Id}', '%{User-Name}', '%{Password}'
+# DESCRIPTIONS
+ldrm (lms-daemon-radius-mikrotik) is a demon to the LMS system (http://www.lms.org.pl/) to perform tasks after freeradius authorization. It consists of two parts:
+- demon: ldrm.py
+- script: client_ldrm.py 
 
-#python clientDrd.py 1 127.0.0.1 3 4 5 192.168.0.1 7 '38:D5:47:D7:82:E6 ' 9 
-is a python script to execute commands on multiple hosts. 
+# REQUIREMENTS
+- installed python 2.7
+- installed pip and virtualenv
+- you can install memcached services, on debian: apt-get install memcached if you want to cache db query
 
-Before used the script you must change msj.conf and add some hosts to host.txt file.
+# HOW TO INSTALL
+see install.txt
+
+# USAGE
+see install.txt
 
