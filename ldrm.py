@@ -293,56 +293,57 @@ class deamonMT(threading.Thread):
         while True:
             data=self.QH.fetch()
             if data is not None:
-                # key for memcached (mac + ip)
-                self.macData=self.cache.get(hashlib.sha1(data[0]).hexdigest())
-                if self.macData is None:
-                    logging.info('deamonMT: miss cache %s, extracting data from DB' % (data[1]['User_Name']))
-                    while True:
-                        dataSQL=self.SQL.getDataFromDB(data[1]['User_Name'])
-                        if dataSQL is False:
-                            time.sleep(5)
-                        else:
-                            if dataSQL is not None:
-                                data[1].update({"nodeId":dataSQL["id"]})
-                                data[1].update({"access":dataSQL["access"]})
-                                data[1].update({"warning":dataSQL["warning"]})
-                                data[1].update({"nodename":dataSQL["nodename"]})
-                                data[1].update({"mrt":dataSQL["mrt"]})
-                                self.cache.set(hashlib.sha1(data[0]).hexdigest(), data[1], timeout=self.time)
-                                self.macData=data[1]
+                if self.is_valid_ipv4_address(data[1]['Framed_IP_Address']):
+                    self.macData=self.cache.get(hashlib.sha1(data[0]+data[1]['Framed_IP_Address']).hexdigest())
+                    if self.macData is None:
+                        logging.info('deamonMT: miss cache for mac: %s ip: %s, extracting data from DB' % (data[1]['User_Name'],data[1]['Framed_IP_Address']))
+                        while True:
+                            dataSQL=self.SQL.getDataFromDB(data[1]['User_Name'])
+                            if dataSQL is False:
+                                time.sleep(5)
                             else:
-                                # cant find mac in db, send info?
-                                data[1].update({"nodeId":None})
-                                self.cache.set(hashlib.sha1(data[0]).hexdigest(), data[1], timeout=self.time)
-                                self.macData=data[1]
-                                pass
-                            break
-                else:
-                    logging.info('deamonMT: hit cache %s, extracting data from memcached' % (data[1]['User_Name']))
-                execOnMT=None
-                logging.debug(self.macData)                                        
-                if self.macData['nodeId'] is not None and self.macData['nodename'] is not None and  self.macData['mrt'] is not None and self.is_valid_ipv4_address(self.macData['Framed_IP_Address']) and self.is_valid_ipv4_address(self.macData['NAS_IP_Address']):
-                    execOnMT = """/queue simple remove [find comment="""+str(self.macData['nodeId'])+"""]
+                                if dataSQL is not None:
+                                    data[1].update({"nodeId":dataSQL["id"]})
+                                    data[1].update({"access":dataSQL["access"]})
+                                    data[1].update({"warning":dataSQL["warning"]})
+                                    data[1].update({"nodename":dataSQL["nodename"]})
+                                    data[1].update({"mrt":dataSQL["mrt"]})
+                                    self.cache.set(hashlib.sha1(data[0]+data[1]['Framed_IP_Address']).hexdigest(), data[1], timeout=self.time)
+                                    self.macData=data[1]
+                                else:
+                                    # cant find mac in db, send info?
+                                    data[1].update({"nodeId":None})
+                                    self.cache.set(hashlib.sha1(data[0]+data[1]['Framed_IP_Address']).hexdigest(), data[1], timeout=self.time)
+                                    self.macData=data[1]
+                                    pass
+                                break
+                    else:
+                        logging.info('deamonMT: hit cache for mac: %s ip: %s, extracting data from memcached' % (data[1]['User_Name'],data[1]['Framed_IP_Address']))
+                    execOnMT=None
+                    logging.debug(self.macData)                                    
+                    if self.macData['nodeId'] is not None and self.macData['nodename'] is not None and  self.macData['mrt'] is not None and self.is_valid_ipv4_address(self.macData['Framed_IP_Address']) and self.is_valid_ipv4_address(self.macData['NAS_IP_Address']):
+                        execOnMT = """/queue simple remove [find comment="""+str(self.macData['nodeId'])+"""]
 /ip firewall address-list remove [find comment="""+str(self.macData['nodeId'])+"""]
 /ip firewall nat remove [find comment="""+str(self.macData['nodeId'])+"""]
 /queue simple add name="""+str(self.macData['nodename'])+""" target="""+str(self.macData['Framed_IP_Address'])+"""/32 parent=none packet-marks="" priority=8/8 queue=s100/s100 limit-at=64k/64k max-limit="""+str(self.macData['mrt'])+""" burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s comment="""+str(self.macData['nodeId'])
-
-                    if self.macData['access'] == 0:
-                        execOnMT +="""\n/ip firewall address-list add list=blacklist address="""+str(self.macData['Framed_IP_Address'])+""" comment="""+str(self.macData['nodeId'])
-                        if self.macData['warning']  == 1:
-                            execOnMT += """\n/ip firewall nat add chain=warn action=dst-nat to-addresses="""+self.lmswarn+""" to-ports=8001 protocol=tcp src-address="""+str(self.macData['Framed_IP_Address'])+""" limit=10/1h,1:packet log=no log-prefix="" comment="""+str(self.macData['nodeId'])
-                    if self.macData['access'] == 1:  
-                        if self.macData['warning'] == 1:
-                            execOnMT += """\n/ip firewall nat add chain=warn action=dst-nat to-addresses="""+self.lmswarn+""" to-ports=8001 protocol=tcp src-address="""+str(self.macData['Framed_IP_Address'])+""" limit=10/1h,1:packet log=no log-prefix="" comment="""+str(self.macData['nodeId'])
-                    
-                    logging.info("deamonMT: commands are ready to send to Mikrotik:\n"+execOnMT)
-                    if self.api == 'ssh':
-                        self.executeMT(execOnMT,self.macData['NAS_IP_Address'])
-                    else:
-                        logging.warn('deamonMT: incorrect api: %s' % (self.api))
+    
+                        if self.macData['access'] == 0:
+                            execOnMT +="""\n/ip firewall address-list add list=blacklist address="""+str(self.macData['Framed_IP_Address'])+""" comment="""+str(self.macData['nodeId'])
+                            if self.macData['warning']  == 1:
+                                execOnMT += """\n/ip firewall nat add chain=warn action=dst-nat to-addresses="""+self.lmswarn+""" to-ports=8001 protocol=tcp src-address="""+str(self.macData['Framed_IP_Address'])+""" limit=10/1h,1:packet log=no log-prefix="" comment="""+str(self.macData['nodeId'])
+                        if self.macData['access'] == 1:  
+                            if self.macData['warning'] == 1:
+                                execOnMT += """\n/ip firewall nat add chain=warn action=dst-nat to-addresses="""+self.lmswarn+""" to-ports=8001 protocol=tcp src-address="""+str(self.macData['Framed_IP_Address'])+""" limit=10/1h,1:packet log=no log-prefix="" comment="""+str(self.macData['nodeId'])
                         
+                        logging.info("deamonMT: commands are ready to send to Mikrotik:\n"+execOnMT)
+                        if self.api == 'ssh':
+                            self.executeMT(execOnMT,self.macData['NAS_IP_Address'])
+                        else:
+                            logging.error('deamonMT: incorrect api: %s' % (self.api))
+                    else:
+                        logging.info('deamonMT: incorrect data: nodeId, access, warning, nodename, mtr, NAS_IP_Address or Framed_IP_Address')
                 else:
-                    logging.error('deamonMT: incorrect data: nodeId, access, warning, nodename, mtr, NAS_IP_Address or Framed_IP_Address')
+                    logging.info('deamonMT: incorrect ip or null: Framed_IP_Address')
             else:
                 time.sleep(1)
      

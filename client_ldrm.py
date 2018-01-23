@@ -40,7 +40,7 @@ class clienttcp:
             return False
 
 
-machash=hashlib.sha1(sys.argv[8]).hexdigest()
+machash=hashlib.sha1(sys.argv[8]+sys.argv[6]).hexdigest()
 
 data={
     'NAS_Identifier':sys.argv[1],
