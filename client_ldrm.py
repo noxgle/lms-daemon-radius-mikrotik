@@ -1,9 +1,9 @@
 #!venv/bin/python
 # -*- coding: utf-8 -*-
-import hashlib
+
 import json
-import sys
 from socket import *
+import sys
 
 class clienttcp:
     
@@ -39,9 +39,6 @@ class clienttcp:
         except:
             return False
 
-
-machash=hashlib.sha1(sys.argv[8]+sys.argv[6]).hexdigest()
-
 data={
     'NAS_Identifier':sys.argv[1],
     'NAS_IP_Address':sys.argv[2],
@@ -54,4 +51,4 @@ data={
     'Password':sys.argv[9]
     }
     
-wynik =clienttcp('127.0.0.1',8888).sendDATA(machash,data)
+wynik =clienttcp('127.0.0.1',8888).sendDATA(sys.argv[8]+sys.argv[6],data)

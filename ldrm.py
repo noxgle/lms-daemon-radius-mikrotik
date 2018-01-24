@@ -1,26 +1,28 @@
 #!venv/bin/python
 # -*- coding: utf-8 -*-
+
 import ConfigParser
 from collections import deque
 import hashlib
 import json
 import logging
 import os.path
+import select
 from signal import SIGTERM
 import socket
 import sys
 import threading
 import time
-import select
+
+#pylibmc
+import memcache
 
 import daemon.pidfile
 import mysql.connector
 from paramiko import client
 import psycopg2
-from werkzeug.contrib.cache import MemcachedCache
 
 
-#from unittest import result
 class ssh:
     client = None
     status = None
@@ -43,10 +45,9 @@ class ssh:
         if(self.client):
             stdin, stdout, stderr = self.client.exec_command(command)
             while not stdout.channel.exit_status_ready():
-            # Only print data if there is data to read in the channel
                 if stdout.channel.recv_ready():
-                    rl, wl, xl = select.select([stdout.channel], [], [], 0.0)
-                    if len(rl) > 0:
+                    rlt, wlt, xlt = select.select([stdout.channel], [], [], 0.0)
+                    if len(rlt) > 0:
                         logging.debug("ssh: \n"+stdout.channel.recv(1024)),
             logging.info("ssh: commands has been sent, SUCCESS")
         else:
@@ -281,9 +282,9 @@ class deamonMT(threading.Thread):
         
         self.basePath = basePath      
         self.loadConf()
-        
-        self.cache = MemcachedCache([self.ip+':'+self.port])        
-        
+                
+        self.cache = memcache.Client([self.ip+':'+self.port], debug=0) 
+    
         self.QH = QH
         
         self.SQL=conSQL()
@@ -308,12 +309,12 @@ class deamonMT(threading.Thread):
                                     data[1].update({"warning":dataSQL["warning"]})
                                     data[1].update({"nodename":dataSQL["nodename"]})
                                     data[1].update({"mrt":dataSQL["mrt"]})
-                                    self.cache.set(hashlib.sha1(data[0]+data[1]['Framed_IP_Address']).hexdigest(), data[1], timeout=self.time)
+                                    self.cache.set(hashlib.sha1(data[0]+data[1]['Framed_IP_Address']).hexdigest(), data[1], self.time)
                                     self.macData=data[1]
                                 else:
                                     # cant find mac in db, send info?
                                     data[1].update({"nodeId":None})
-                                    self.cache.set(hashlib.sha1(data[0]+data[1]['Framed_IP_Address']).hexdigest(), data[1], timeout=self.time)
+                                    self.cache.set(hashlib.sha1(data[0]+data[1]['Framed_IP_Address']).hexdigest(), data[1], self.time)
                                     self.macData=data[1]
                                     pass
                                 break
@@ -343,20 +344,20 @@ class deamonMT(threading.Thread):
                     else:
                         logging.info('deamonMT: incorrect data: nodeId, access, warning, nodename, mtr, NAS_IP_Address or Framed_IP_Address')
                 else:
-                    logging.info('deamonMT: incorrect ip or null: Framed_IP_Address')
+                    logging.info('deamonMT: incorrect Framed_IP_Address or null')
             else:
                 time.sleep(1)
      
     def is_valid_ipv4_address(self,address):
         try:
             socket.inet_pton(socket.AF_INET, address)
-        except AttributeError:  # no inet_pton here, sorry
+        except AttributeError:  
             try:
                 socket.inet_aton(address)
             except socket.error:
                 return False
             return address.count('.') == 3
-        except socket.error:  # not a valid address
+        except socket.error: 
             return False
     
         return True
@@ -411,7 +412,7 @@ class servertcp(threading.Thread):
                 try:
                     data = json.loads(client.recv(1024))
                     if data[0] == 'DATA':
-                        self.QH.add(data[1],data[2])
+                        self.QH.add(hashlib.sha1(data[1]).hexdigest(),data[2])
                         client.send(json.dumps(['OK']))
                         logging.info("servertcp: new data, mac: %s from %s" % (data[2]['User_Name'],ipPort[0]))
                     else:
@@ -441,6 +442,7 @@ class drdDaemon:
         self.loadConf()
     
     def run(self):
+        
         if self.log=='debug':
             logging.basicConfig(level=logging.DEBUG, format='%(relativeCreated)6d %(threadName)s %(message)s')
             logging.getLogger("paramiko").setLevel(logging.DEBUG)
@@ -498,8 +500,6 @@ class drdDaemon:
             print 'drdDaemon: Where is conf, should be in main directory\nfile: ldrm.conf'
             sys.exit(1)
         
-        # Check for a pidfile to see if the daemon already runs
-        #pidfile = self.basePath + '/tmp/drd.pid'
         pidfile = '/tmp/drd.pid'
         try:
             pf = file(pidfile, 'r')
@@ -513,8 +513,6 @@ class drdDaemon:
             sys.stderr.write(message % pidfile)
             sys.exit(1)
         
-        # Start the daemon
-
         working_directory=self.basePath
         pidfile=daemon.pidfile.PIDLockFile(pidfile)
         if self.log is True:
@@ -530,8 +528,7 @@ class drdDaemon:
         """
         Stop the daemon
         """        
-        # Get the pid from the pidfile
-        #pidfile = self.basePath + '/tmp/drd.pid'
+
         pidfile = '/tmp/drd.pid'
         
         try:
@@ -544,9 +541,8 @@ class drdDaemon:
         if not pid:
             message = "pidfile %s does not exist. Daemon not running?"
             sys.stderr.write(message % pidfile)
-            return  # not an error in a restart
-    
-        # Try killing the daemon process    
+            return 
+           
         try:
             while 1:
                 os.kill(pid, SIGTERM)

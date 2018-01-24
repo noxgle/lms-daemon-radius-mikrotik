@@ -1,5 +1,4 @@
 ConfigParser
-werkzeug
 mysql-connector==2.1.6
 paramiko
 daemon
