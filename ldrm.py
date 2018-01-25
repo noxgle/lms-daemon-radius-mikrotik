@@ -262,6 +262,7 @@ class queueDrd:
             return None
     
     def add(self, machash,data):
+        
         if len(self.queueDrd)<self.size:
             if machash not in self.queueDrd:
                 self.queueDrd.append(machash)
@@ -316,25 +317,28 @@ class deamonMT(threading.Thread):
                                     data[1].update({"nodeId":None})
                                     self.cache.set(hashlib.sha1(data[0]+data[1]['Framed_IP_Address']).hexdigest(), data[1], self.time)
                                     self.macData=data[1]
-                                    pass
                                 break
                     else:
                         logging.info('deamonMT: hit cache for mac: %s ip: %s, extracting data from memcached' % (data[1]['User_Name'],data[1]['Framed_IP_Address']))
                     execOnMT=None
                     logging.debug(self.macData)                                    
                     if self.macData['nodeId'] is not None and self.macData['nodename'] is not None and  self.macData['mrt'] is not None and self.is_valid_ipv4_address(self.macData['Framed_IP_Address']) and self.is_valid_ipv4_address(self.macData['NAS_IP_Address']):
-                        execOnMT = """/queue simple remove [find comment="""+str(self.macData['nodeId'])+"""]
-/ip firewall address-list remove [find comment="""+str(self.macData['nodeId'])+"""]
-/ip firewall nat remove [find comment="""+str(self.macData['nodeId'])+"""]
-/queue simple add name="""+str(self.macData['nodename'])+""" target="""+str(self.macData['Framed_IP_Address'])+"""/32 parent=none packet-marks="" priority=8/8 queue=s100/s100 limit-at=64k/64k max-limit="""+str(self.macData['mrt'])+""" burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s comment="""+str(self.macData['nodeId'])
-    
+                        
+                        execOnMT ='/queue simple remove [find target='+str(self.macData['Framed_IP_Address'])+'/32]; '
+                        execOnMT+='/ip firewall nat remove [find src-address="'+str(self.macData['Framed_IP_Address'])+'" and chain="warn"]; '
+                        execOnMT+='/ip firewall address-list remove [find address="'+str(self.macData['Framed_IP_Address'])+'" and list="blacklist"]; '
+                        
+#                         execOnMT = """/queue simple remove [find comment="""+str(self.macData['nodeId'])+"""]
+# /ip firewall address-list remove [find comment="""+str(self.macData['nodeId'])+"""]
+# /ip firewall nat remove [find comment="""+str(self.macData['nodeId'])+"""]"""
+                        execOnMT+="""/queue simple add name="""+str(self.macData['nodename'])+""" target="""+str(self.macData['Framed_IP_Address'])+"""/32 parent=none packet-marks="" priority=8/8 queue=s100/s100 limit-at=64k/64k max-limit="""+str(self.macData['mrt'])+""" burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s comment="""+str(self.macData['nodeId'])+"""; """    
                         if self.macData['access'] == 0:
-                            execOnMT +="""\n/ip firewall address-list add list=blacklist address="""+str(self.macData['Framed_IP_Address'])+""" comment="""+str(self.macData['nodeId'])
+                            execOnMT +="""/ip firewall address-list add list=blacklist address="""+str(self.macData['Framed_IP_Address'])+""" comment="""+str(self.macData['nodeId'])+"""; """
                             if self.macData['warning']  == 1:
-                                execOnMT += """\n/ip firewall nat add chain=warn action=dst-nat to-addresses="""+self.lmswarn+""" to-ports=8001 protocol=tcp src-address="""+str(self.macData['Framed_IP_Address'])+""" limit=10/1h,1:packet log=no log-prefix="" comment="""+str(self.macData['nodeId'])
+                                execOnMT += """/ip firewall nat add chain=warn action=dst-nat to-addresses="""+self.lmswarn+""" to-ports=8001 protocol=tcp src-address="""+str(self.macData['Framed_IP_Address'])+""" limit=10/1h,1:packet log=no log-prefix="" comment="""+str(self.macData['nodeId'])+"""; """
                         if self.macData['access'] == 1:  
                             if self.macData['warning'] == 1:
-                                execOnMT += """\n/ip firewall nat add chain=warn action=dst-nat to-addresses="""+self.lmswarn+""" to-ports=8001 protocol=tcp src-address="""+str(self.macData['Framed_IP_Address'])+""" limit=10/1h,1:packet log=no log-prefix="" comment="""+str(self.macData['nodeId'])
+                                execOnMT += """/ip firewall nat add chain=warn action=dst-nat to-addresses="""+self.lmswarn+""" to-ports=8001 protocol=tcp src-address="""+str(self.macData['Framed_IP_Address'])+""" limit=10/1h,1:packet log=no log-prefix="" comment="""+str(self.macData['nodeId'])+"""; """
                         
                         logging.info("deamonMT: commands are ready to send to Mikrotik:\n"+execOnMT)
                         if self.api == 'ssh':
@@ -347,6 +351,8 @@ class deamonMT(threading.Thread):
                     logging.info('deamonMT: incorrect Framed_IP_Address or null')
             else:
                 time.sleep(1)
+                if len(self.QH.queueDrd)<100:
+                    time.sleep(29)
      
     def is_valid_ipv4_address(self,address):
         try:
@@ -359,7 +365,6 @@ class deamonMT(threading.Thread):
             return address.count('.') == 3
         except socket.error: 
             return False
-    
         return True
                     
     def loadConf(self):

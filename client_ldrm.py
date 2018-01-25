@@ -12,12 +12,12 @@ class clienttcp:
         self.host=host
         self.port=port
     
-    def sendDATA(self,machash,clientData):
+    def sendDATA(self,keyData,clientData):
         try:
             self.s.connect((self.host,self.port))
             self.s.settimeout(1)
             try:
-                data=json.dumps(['DATA',machash,clientData])
+                data=json.dumps(['DATA',keyData,clientData])
                 self.s.send(data)
                 try:
                     msg=json.loads(self.s.recv(1024))
