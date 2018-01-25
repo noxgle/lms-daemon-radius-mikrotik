@@ -1,9 +1,9 @@
 HOW TO INSTALL
-
+on freeradius server:
 - create a directory lms-daemon-radius-mikrotik in /opt
 - copy source files to /opt/lms-daemon-radius-mikrotik
 - create virtual environment ./createVirtEnv.bash
-- configure ldrm daemon file conf/ldrm.conf
+- configure ldrm daemon file: conf/ldrm.conf
 - in freeradius post-auth sections add:
 	
 		update control { 
