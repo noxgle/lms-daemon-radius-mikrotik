@@ -14,7 +14,7 @@ if ! [ -x "$(command -v virtualenv)" ]; then
 fi
 
 virtualenv --no-site-packages venv
-
+#virtualenv --no-site-packages -p /home/ilusion/workspace/stuff/pypy/pypy2-v5.10.0-linux64/bin/pypy venv
 source $DIR/venv/bin/activate
 pip install pip --upgrade
 pip install -r requirements.txt
