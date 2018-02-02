@@ -326,10 +326,10 @@ class deamonMT(threading.Thread):
                 time.sleep(60)
             elif ql>0 and ql<10:
                 time.sleep(30)
-            elif ql>0 and ql<10:
-                time.sleep(30)
             elif ql>0 and ql<100:
                 time.sleep(15)
+            elif ql>0 and ql<300:
+                time.sleep(5)
             else:
                 time.sleep(1)
     
