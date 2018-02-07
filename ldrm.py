@@ -13,6 +13,7 @@ import socket
 import sys
 import threading
 import time
+import datetime
 
 import daemon.pidfile
 import memcache
@@ -365,18 +366,18 @@ class deamonMT(threading.Thread):
             execOnMT = None
             logging.debug(self.macData)                                    
             if self.macData['nodeId'] is not None and self.macData['nodename'] is not None and  self.macData['mrt'] is not None and self.is_valid_ipv4_address(self.macData['Framed_IP_Address']) and self.is_valid_ipv4_address(self.macData['NAS_IP_Address']):
-                
+                datenow=datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d')
                 execOnMT = '/queue simple remove [find target=' + str(self.macData['Framed_IP_Address']) + '/32]; '
                 execOnMT += '/ip firewall nat remove [find src-address="' + str(self.macData['Framed_IP_Address']) + '" and chain="warn"]; '
                 execOnMT += '/ip firewall address-list remove [find address="' + str(self.macData['Framed_IP_Address']) + '" and list="blacklist"]; '
-                execOnMT += """/queue simple add name=""" + str(self.macData['nodename']) + """ target=""" + str(self.macData['Framed_IP_Address']) + """/32 parent=none packet-marks="" priority=8/8 queue=s100/s100 limit-at=64k/64k max-limit=""" + str(self.macData['mrt']) + """ burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s comment=""" + str(time.time()) + """; """    
+                execOnMT += """/queue simple add name=""" + str(self.macData['nodename']) + """ target=""" + str(self.macData['Framed_IP_Address']) + """/32 parent=none packet-marks="" priority=8/8 queue=s100/s100 limit-at=64k/64k max-limit=""" + str(self.macData['mrt']) + """ burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s comment=""" + str(datenow) + """; """    
                 if self.macData['access'] == 0:
                     execOnMT += """/ip firewall address-list add list=blacklist address=""" + str(self.macData['Framed_IP_Address']) + """ comment=""" + str(self.macData['nodeId']) + """; """
                     if self.macData['warning'] == 1:
-                        execOnMT += """/ip firewall nat add chain=warn action=dst-nat to-addresses=""" + self.lmswarn + """ to-ports=8001 protocol=tcp src-address=""" + str(self.macData['Framed_IP_Address']) + """ limit=10/1h,1:packet log=no log-prefix="" comment=""" + str(time.time()) + """; """
+                        execOnMT += """/ip firewall nat add chain=warn action=dst-nat to-addresses=""" + self.lmswarn + """ to-ports=8001 protocol=tcp src-address=""" + str(self.macData['Framed_IP_Address']) + """ limit=10/1h,1:packet log=no log-prefix="" comment=""" + str(datenow) + """; """
                 if self.macData['access'] == 1:  
                     if self.macData['warning'] == 1:
-                        execOnMT += """/ip firewall nat add chain=warn action=dst-nat to-addresses=""" + self.lmswarn + """ to-ports=8001 protocol=tcp src-address=""" + str(self.macData['Framed_IP_Address']) + """ limit=10/1h,1:packet log=no log-prefix="" comment=""" + str(time.time()) + """; """
+                        execOnMT += """/ip firewall nat add chain=warn action=dst-nat to-addresses=""" + self.lmswarn + """ to-ports=8001 protocol=tcp src-address=""" + str(self.macData['Framed_IP_Address']) + """ limit=10/1h,1:packet log=no log-prefix="" comment=""" + str(datenow) + """; """
                 
                 logging.debug("deamonMT: Mikrotik commands for ip %s:\n %s" % (self.macData['NAS_IP_Address'], execOnMT))
                 
