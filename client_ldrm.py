@@ -39,16 +39,18 @@ class clienttcp:
         except:
             return False
 
-data={
-    'NAS_Identifier':sys.argv[1],
-    'NAS_IP_Address':sys.argv[2],
-    'NAS_Port':sys.argv[3],
-    'NAS_Port_Type':sys.argv[4],
-    'Calling_Station_Id':sys.argv[5],
-    'Framed_IP_Address':sys.argv[6],
-    'Called_Station_Id':sys.argv[7],
-    'User_Name':sys.argv[8],       
-    'Password':sys.argv[9]
-    }
-    
-wynik =clienttcp('127.0.0.1',8888).sendDATA(sys.argv[8]+sys.argv[6],data)
+
+if __name__ == "__main__":
+    data={
+        'NAS_Identifier':sys.argv[1],
+        'NAS_IP_Address':sys.argv[2],
+        'NAS_Port':sys.argv[3],
+        'NAS_Port_Type':sys.argv[4],
+        'Calling_Station_Id':sys.argv[5],
+        'Framed_IP_Address':sys.argv[6],
+        'Called_Station_Id':sys.argv[7],
+        'User_Name':sys.argv[8],       
+        'Password':sys.argv[9]
+        }
+        
+    clienttcp('127.0.0.1',8888).sendDATA(sys.argv[8]+sys.argv[6],data)

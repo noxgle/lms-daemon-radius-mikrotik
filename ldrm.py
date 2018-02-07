@@ -14,46 +14,48 @@ import sys
 import threading
 import time
 
-#pylibmc
-import memcache
-
 import daemon.pidfile
+import memcache
 import mysql.connector
-from paramiko import client
 import psycopg2
+import ssh2
+from ssh2.session import Session
 
 
+#pylibmc
 class ssh:
     client = None
     status = None
- 
+    
     def __init__(self, address, username, password, port, timeout):
         logging.info("ssh: connecting to server: %s " % (address))
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(timeout)
         try:
-            self.client = client.SSHClient()
-            self.client.set_missing_host_key_policy(client.AutoAddPolicy())
-            self.client.connect(address, username=username, password=password, look_for_keys=False,timeout=timeout,port=port)
+            sock.connect((address, port))
         except:
-            logging.warn("ssh: can't connect to server: %s " % (address))
             self.status=False
+            logging.warn("ssh: can't connect to server: %s " % (address))
         else:
-            logging.info("ssh: connect to server: %s " % (address))
-            self.status=True
-
- 
+            s = Session()
+            s.handshake(sock)
+            try:
+                s.userauth_password(username, password)
+            except:
+                self.status=False
+                logging.warn("ssh: bad login or password: %s " % (address))
+            else:
+                self.client = s.open_session()
+                self.status=True
+                
     def sendCommand(self, command):
-        if(self.client):
-            stdin, stdout, stderr = self.client.exec_command(command)
-            while not stdout.channel.exit_status_ready():
-                if stdout.channel.recv_ready():
-                    rlt, wlt, xlt = select.select([stdout.channel], [], [], 0.0)
-                    if len(rlt) > 0:
-                        logging.debug("ssh: \n"+stdout.channel.recv(1024)),
-            logging.info("ssh: commands has been sent, SUCCESS")
-        else:
-            logging.error("ssh: connection not opened")
-            
-
+        self.client.execute(command)
+        size, data = self.client.read()
+        while size > 0:
+            logging.debug("ssh: client %s" % (data))
+            size, data = self.client.read()
+        logging.info("ssh: commands has been sent, SUCCESS")
+        
 class conSQL:
     
     def __init__(self):
@@ -367,10 +369,6 @@ class deamonMT(threading.Thread):
                 execOnMT ='/queue simple remove [find target='+str(self.macData['Framed_IP_Address'])+'/32]; '
                 execOnMT+='/ip firewall nat remove [find src-address="'+str(self.macData['Framed_IP_Address'])+'" and chain="warn"]; '
                 execOnMT+='/ip firewall address-list remove [find address="'+str(self.macData['Framed_IP_Address'])+'" and list="blacklist"]; '
-                
-#                         execOnMT = """/queue simple remove [find comment="""+str(self.macData['nodeId'])+"""]
-# /ip firewall address-list remove [find comment="""+str(self.macData['nodeId'])+"""]
-# /ip firewall nat remove [find comment="""+str(self.macData['nodeId'])+"""]"""
                 execOnMT+="""/queue simple add name="""+str(self.macData['nodename'])+""" target="""+str(self.macData['Framed_IP_Address'])+"""/32 parent=none packet-marks="" priority=8/8 queue=s100/s100 limit-at=64k/64k max-limit="""+str(self.macData['mrt'])+""" burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s comment="""+str(self.macData['nodeId'])+"""; """    
                 if self.macData['access'] == 0:
                     execOnMT +="""/ip firewall address-list add list=blacklist address="""+str(self.macData['Framed_IP_Address'])+""" comment="""+str(self.macData['nodeId'])+"""; """
@@ -390,70 +388,6 @@ class deamonMT(threading.Thread):
             logging.info('deamonMT: incorrect Framed_IP_Address or null')
             return False
         
-    def runOLD(self):
-        logging.info("deamonMT: ready and waiting")
-        while True:
-            data=self.QH.fetch()
-            if data is not None:
-                if self.is_valid_ipv4_address(data[1]['Framed_IP_Address']):
-                    self.macData=self.cache.get(hashlib.sha1(data[0]+data[1]['Framed_IP_Address']).hexdigest())
-                    if self.macData is None:
-                        logging.info('deamonMT: miss cache for mac: %s ip: %s, extracting data from DB' % (data[1]['User_Name'],data[1]['Framed_IP_Address']))
-                        while True:
-                            dataSQL=self.SQL.getDataFromDB(data[1]['User_Name'])
-                            if dataSQL is False:
-                                time.sleep(5)
-                            else:
-                                if dataSQL is not None:
-                                    data[1].update({"nodeId":dataSQL["id"]})
-                                    data[1].update({"access":dataSQL["access"]})
-                                    data[1].update({"warning":dataSQL["warning"]})
-                                    data[1].update({"nodename":dataSQL["nodename"]})
-                                    data[1].update({"mrt":dataSQL["mrt"]})
-                                    self.cache.set(hashlib.sha1(data[0]+data[1]['Framed_IP_Address']).hexdigest(), data[1], self.time)
-                                    self.macData=data[1]
-                                else:
-                                    # cant find mac in db, send info?
-                                    data[1].update({"nodeId":None})
-                                    self.cache.set(hashlib.sha1(data[0]+data[1]['Framed_IP_Address']).hexdigest(), data[1], self.time)
-                                    self.macData=data[1]
-                                break
-                    else:
-                        logging.info('deamonMT: hit cache for mac: %s ip: %s, extracting data from memcached' % (data[1]['User_Name'],data[1]['Framed_IP_Address']))
-                    execOnMT=None
-                    logging.debug(self.macData)                                    
-                    if self.macData['nodeId'] is not None and self.macData['nodename'] is not None and  self.macData['mrt'] is not None and self.is_valid_ipv4_address(self.macData['Framed_IP_Address']) and self.is_valid_ipv4_address(self.macData['NAS_IP_Address']):
-                        
-                        execOnMT ='/queue simple remove [find target='+str(self.macData['Framed_IP_Address'])+'/32]; '
-                        execOnMT+='/ip firewall nat remove [find src-address="'+str(self.macData['Framed_IP_Address'])+'" and chain="warn"]; '
-                        execOnMT+='/ip firewall address-list remove [find address="'+str(self.macData['Framed_IP_Address'])+'" and list="blacklist"]; '
-                        
-#                         execOnMT = """/queue simple remove [find comment="""+str(self.macData['nodeId'])+"""]
-# /ip firewall address-list remove [find comment="""+str(self.macData['nodeId'])+"""]
-# /ip firewall nat remove [find comment="""+str(self.macData['nodeId'])+"""]"""
-                        execOnMT+="""/queue simple add name="""+str(self.macData['nodename'])+""" target="""+str(self.macData['Framed_IP_Address'])+"""/32 parent=none packet-marks="" priority=8/8 queue=s100/s100 limit-at=64k/64k max-limit="""+str(self.macData['mrt'])+""" burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s comment="""+str(self.macData['nodeId'])+"""; """    
-                        if self.macData['access'] == 0:
-                            execOnMT +="""/ip firewall address-list add list=blacklist address="""+str(self.macData['Framed_IP_Address'])+""" comment="""+str(self.macData['nodeId'])+"""; """
-                            if self.macData['warning']  == 1:
-                                execOnMT += """/ip firewall nat add chain=warn action=dst-nat to-addresses="""+self.lmswarn+""" to-ports=8001 protocol=tcp src-address="""+str(self.macData['Framed_IP_Address'])+""" limit=10/1h,1:packet log=no log-prefix="" comment="""+str(self.macData['nodeId'])+"""; """
-                        if self.macData['access'] == 1:  
-                            if self.macData['warning'] == 1:
-                                execOnMT += """/ip firewall nat add chain=warn action=dst-nat to-addresses="""+self.lmswarn+""" to-ports=8001 protocol=tcp src-address="""+str(self.macData['Framed_IP_Address'])+""" limit=10/1h,1:packet log=no log-prefix="" comment="""+str(self.macData['nodeId'])+"""; """
-                        
-                        logging.info("deamonMT: commands are ready to send to Mikrotik:\n"+execOnMT)
-                        if self.api == 'ssh':
-                            self.executeMT(execOnMT,self.macData['NAS_IP_Address'])
-                        else:
-                            logging.error('deamonMT: incorrect api: %s' % (self.api))
-                    else:
-                        logging.info('deamonMT: incorrect data: nodeId, access, warning, nodename, mtr, NAS_IP_Address or Framed_IP_Address')
-                else:
-                    logging.info('deamonMT: incorrect Framed_IP_Address or null')
-            else:
-                if len(self.QH.queueDrd)<50:
-                    time.sleep(5)
-
-     
     def is_valid_ipv4_address(self,address):
         try:
             socket.inet_pton(socket.AF_INET, address)
@@ -465,7 +399,15 @@ class deamonMT(threading.Thread):
             return address.count('.') == 3
         except socket.error: 
             return False
-        return True
+        return True#         if self.log is True:
+#             stdout = file(self.basePath + '/log/stdout.log', 'a')
+#             stderr = file(self.basePath + '/log/stderr.log', 'a')            
+#             with daemon.DaemonContext(stdout=stdout, stderr=stderr, working_directory=working_directory, pidfile=pidfile):
+#                 self.run()
+#         else:
+#             with daemon.DaemonContext(working_directory=working_directory, pidfile=pidfile):
+#                 self.run()
+        
                     
     def loadConf(self):
         
@@ -491,7 +433,6 @@ class deamonMT(threading.Thread):
                 S=ssh(ipToCon,self.loginSsh, self.passwdSsh, int(self.portSsh), int(self.timeoutSsh))
                 if S.status is True:
                     S.sendCommand(execOnMT)
-                    S.client.close()
                     break
                 else:
                     time.sleep(5)
@@ -625,13 +566,8 @@ class drdDaemon:
         
         working_directory=self.basePath
         pidfile=daemon.pidfile.PIDLockFile(pidfile)
-        if self.log is True:
-            stdout = file(self.basePath + '/log/stdout.log', 'a')
-            stderr = file(self.basePath + '/log/stderr.log', 'a')            
-            with daemon.DaemonContext(stdout=stdout, stderr=stderr, working_directory=working_directory, pidfile=pidfile):
-                self.run()
-        else:
-            with daemon.DaemonContext(working_directory=working_directory, pidfile=pidfile):
+
+        with daemon.DaemonContext(working_directory=working_directory, pidfile=pidfile):
                 self.run()
 
     def stop(self):

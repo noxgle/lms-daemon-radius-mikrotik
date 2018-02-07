@@ -1,11 +1,8 @@
 ConfigParser
 mysql-connector==2.1.6
-paramiko
 daemon
 pidfile
 python-daemon
 python-memcached
-aead
-pycrypto
-cryptography
 psycopg2
+ssh2-python
