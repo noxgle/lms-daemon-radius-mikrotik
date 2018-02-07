@@ -22,7 +22,7 @@ import ssh2
 from ssh2.session import Session
 
 
-#pylibmc
+# pylibmc
 class ssh:
     client = None
     status = None
@@ -34,7 +34,7 @@ class ssh:
         try:
             sock.connect((address, port))
         except:
-            self.status=False
+            self.status = False
             logging.warn("ssh: can't connect to server: %s " % (address))
         else:
             s = Session()
@@ -42,11 +42,11 @@ class ssh:
             try:
                 s.userauth_password(username, password)
             except:
-                self.status=False
+                self.status = False
                 logging.warn("ssh: bad login or password: %s " % (address))
             else:
                 self.client = s.open_session()
-                self.status=True
+                self.status = True
                 
     def sendCommand(self, command):
         self.client.execute(command)
@@ -55,6 +55,7 @@ class ssh:
             logging.debug("ssh: client %s" % (data))
             size, data = self.client.read()
         logging.info("ssh: commands has been sent, SUCCESS")
+
         
 class conSQL:
     
@@ -62,30 +63,29 @@ class conSQL:
         self.basePath = basePath      
         self.loadConf()
 
-
     def loadConf(self):
         config = ConfigParser.ConfigParser()
-        config.readfp(open(self.basePath+'/conf/ldrm.conf'))
-        self.type = config.get('db','type')
+        config.readfp(open(self.basePath + '/conf/ldrm.conf'))
+        self.type = config.get('db', 'type')
         self.ip = config.get('db', 'ip')
         self.port = int(config.get('db', 'port'))
-        self.dbname = config.get('db','dbname')
+        self.dbname = config.get('db', 'dbname')
         self.login = config.get('db', 'login')
         self.passwd = config.get('db', 'passwd')
 
-    def getDataFromDB(self,mac):
+    def getDataFromDB(self, mac):
         if self.type == 'mysql':
-            results=self.selectMySQL("""SELECT n.id as id, inet_ntoa(n.ipaddr) as ip, n.name as nodename, access, warning
+            results = self.selectMySQL("""SELECT n.id as id, inet_ntoa(n.ipaddr) as ip, n.name as nodename, access, warning
                             FROM nodes as n, macs as m
                             WHERE upper(m.mac) = '%s'
                             AND n.id = m.nodeid
                             ORDER by n.id""" % (mac))
             if results is False:
                 return False
-            dataMac=None
-            if len(results) >0:
-                dataMac={"id":results[0][0],"ip":results[0][1],"nodename":results[0][2],"access":results[0][3],"warning":results[0][4]}
-                results=self.selectMySQL("""SELECT CONCAT(ROUND(COALESCE(x.upceil, y.upceil, z.upceil)),'k','/', ROUND(COALESCE(x.downceil, y.downceil, z.downceil)),'k') AS mrt
+            dataMac = None
+            if len(results) > 0:
+                dataMac = {"id":results[0][0], "ip":results[0][1], "nodename":results[0][2], "access":results[0][3], "warning":results[0][4]}
+                results = self.selectMySQL("""SELECT CONCAT(ROUND(COALESCE(x.upceil, y.upceil, z.upceil)),'k','/', ROUND(COALESCE(x.downceil, y.downceil, z.downceil)),'k') AS mrt
                             FROM (
                                 SELECT n.id, MIN(n.name) AS name, SUM(t.downceil/o.cnt) AS downceil, SUM(t.upceil/o.cnt) AS upceil
                                 FROM nodeassignments na
@@ -129,10 +129,10 @@ class conSQL:
                                     FROM nodes as n,macs as m
                                     WHERE upper(m.mac) = '%s'
                                     AND m.nodeid = n.id
-                            ) z ON (1=1)""" % (mac,mac,mac))
+                            ) z ON (1=1)""" % (mac, mac, mac))
                 if results is False:
                     return False
-                if len(results) >0:
+                if len(results) > 0:
                     dataMac.update({"mrt":results[0][0]})
                 else:
                     logging.warn("conSQL: can't find tariff for %s" % (mac))
@@ -140,17 +140,17 @@ class conSQL:
                 logging.warn("conSQL: wrong mac address: %s, don't exist in DB" % (mac))
             return dataMac
         elif self.type == 'pgsql':
-            results=self.selectPG("""SELECT n.id as id, inet_ntoa(n.ipaddr) as ip, n.name as nodename, access, warning
+            results = self.selectPG("""SELECT n.id as id, inet_ntoa(n.ipaddr) as ip, n.name as nodename, access, warning
                             FROM nodes as n, macs as m
                             WHERE upper(m.mac) = '%s'
                             AND n.id = m.nodeid
                             ORDER by n.id""" % (mac))
             if results is False:
                 return False
-            dataMac=None
-            if len(results) >0:
-                dataMac={"id":results[0][0],"ip":results[0][1],"nodename":results[0][2],"access":results[0][3],"warning":results[0][4]}
-                results=self.selectPG("""SELECT CONCAT(ROUND(COALESCE(x.upceil, y.upceil, z.upceil)),'k','/', ROUND(COALESCE(x.downceil, y.downceil, z.downceil)),'k') AS mrt
+            dataMac = None
+            if len(results) > 0:
+                dataMac = {"id":results[0][0], "ip":results[0][1], "nodename":results[0][2], "access":results[0][3], "warning":results[0][4]}
+                results = self.selectPG("""SELECT CONCAT(ROUND(COALESCE(x.upceil, y.upceil, z.upceil)),'k','/', ROUND(COALESCE(x.downceil, y.downceil, z.downceil)),'k') AS mrt
                             FROM (
                                 SELECT n.id, MIN(n.name) AS name, SUM(t.downceil/o.cnt) AS downceil, SUM(t.upceil/o.cnt) AS upceil
                                 FROM nodeassignments na
@@ -194,11 +194,11 @@ class conSQL:
                                     FROM nodes as n,macs as m
                                     WHERE upper(m.mac) = '%s'
                                     AND m.nodeid = n.id
-                            ) z ON (1=1)""" % (mac,mac,mac))
+                            ) z ON (1=1)""" % (mac, mac, mac))
 
                 if results is False:
                     return False
-                if len(results) >0:
+                if len(results) > 0:
                     dataMac.update({"mrt":results[0][0]})
                 else:
                     logging.warn("conSQL: can't find tariff for %s" % (mac))
@@ -208,35 +208,35 @@ class conSQL:
         else:
             logging.error("conSQL: wrong type of db: %s, supported only mysql or pgslq" % (self.type))
 
-    def selectMySQL(self,query):
+    def selectMySQL(self, query):
         try:
-            cnx = mysql.connector.connect(host=self.ip,database=self.dbname,user=self.login, password=self.passwd)
+            cnx = mysql.connector.connect(host=self.ip, database=self.dbname, user=self.login, password=self.passwd)
             try:
                 cursor = cnx.cursor()
                 cursor.execute(query)
             except:
                 raise
             else:
-                results=cursor.fetchall()
+                results = cursor.fetchall()
                 return results
             finally:
                 cnx.close()
         except Exception as e:
-            logging.error('conSQL: '+ str(e))
+            logging.error('conSQL: ' + str(e))
             return False
 
-    def selectPG(self,query):
+    def selectPG(self, query):
         try:
-            con=psycopg2.connect(host=self.ip, dbname=self.dbname, user=self.login, password=self.passwd)
+            con = psycopg2.connect(host=self.ip, dbname=self.dbname, user=self.login, password=self.passwd)
         except Exception as e:
-            logging.error('conSQL: '+ str(e))
+            logging.error('conSQL: ' + str(e))
             return False
         else:
             cur = con.cursor()
             try:
                 cur.execute(query)
             except Exception as e:
-                logging.error('conSQL: '+ str(e))
+                logging.error('conSQL: ' + str(e))
                 return False
             else:
                 results = cur.fetchall()
@@ -244,28 +244,29 @@ class conSQL:
             finally:
                 con.close()
 
+
 class queueDrd:
     
     queueDrd = deque([])
     
-    dataClient={}
+    dataClient = {}
     
-    size=1000
+    size = 1000
     
     def getAllItemInQueue(self):
         return list(self.queueDrd)
     
     def fetch(self):
-        if len(self.queueDrd)>0:            
-            machash=self.queueDrd.popleft()
-            data=self.dataClient.pop(machash)
-            return [machash,data]
+        if len(self.queueDrd) > 0:            
+            machash = self.queueDrd.popleft()
+            data = self.dataClient.pop(machash)
+            return [machash, data]
         else:
             return None
     
-    def add(self, machash,data):
+    def add(self, machash, data):
         
-        if len(self.queueDrd)<self.size:
+        if len(self.queueDrd) < self.size:
             if machash not in self.queueDrd:
                 self.queueDrd.append(machash)
                 self.dataClient.update({machash:data})
@@ -286,63 +287,62 @@ class deamonMT(threading.Thread):
         self.basePath = basePath      
         self.loadConf()
                 
-        self.cache = memcache.Client([self.ip+':'+self.port], debug=0) 
+        self.cache = memcache.Client([self.ip + ':' + self.port], debug=0) 
     
         self.QH = QH
         
-        self.SQL=conSQL()
+        self.SQL = conSQL()
     
     def run(self):
         logging.info("deamonMT: ready and waiting")
         while True:
-            if len(self.QH.queueDrd)>0:
-                timeMaxScript=5
-                imax=10
-                timeScript=0
-                i=0
-                MTCommands={}
+            if len(self.QH.queueDrd) > 0:
+                timeMaxScript = 5
+                imax = 10
+                timeScript = 0
+                i = 0
+                MTCommands = {}
                 while True:
-                    ts=time.time()
-                    if timeScript<timeMaxScript and i<imax:
-                        data=self.QH.fetch()
+                    ts = time.time()
+                    if timeScript < timeMaxScript and i < imax:
+                        data = self.QH.fetch()
                         if data is not None:
-                            commands=self.createMTCommands(data)
+                            commands = self.createMTCommands(data)
                             if commands is not False:
                                 if commands[0] in MTCommands:
-                                    MTCommands[commands[0]]+=commands[1]
+                                    MTCommands[commands[0]] += commands[1]
                                 else:
                                     MTCommands.update({commands[0]:commands[1]})
-                                i+=1
+                                i += 1
                     else:
                         break
-                    timeScript+=time.time()-ts
-                logging.info("deamonMT: sending commands to execute on Mikrotik :\n"+str(MTCommands))
-                if len(MTCommands)>0 :
+                    timeScript += time.time() - ts
+                logging.info("deamonMT: sending commands to execute on Mikrotik :\n" + str(MTCommands))
+                if len(MTCommands) > 0 :
                     for i in MTCommands:
                         if self.api == 'ssh':
                             self.executeMT(MTCommands[i], i)
                         else:
                             logging.error('deamonMT: incorrect api: %s' % (self.api))
-            ql=len(self.QH.queueDrd)
+            ql = len(self.QH.queueDrd)
             if ql == 0:
                 time.sleep(60)
-            elif ql>0 and ql<10:
+            elif ql > 0 and ql < 10:
                 time.sleep(30)
-            elif ql>0 and ql<100:
+            elif ql > 0 and ql < 100:
                 time.sleep(15)
-            elif ql>0 and ql<300:
+            elif ql > 0 and ql < 300:
                 time.sleep(5)
             else:
                 time.sleep(1)
     
-    
-    def createMTCommands(self,data):
+    def createMTCommands(self, data):
         if self.is_valid_ipv4_address(data[1]['Framed_IP_Address']):
-            self.macData=self.cache.get(hashlib.sha1(data[0]+data[1]['Framed_IP_Address']).hexdigest())
+            self.macData = self.cache.get(hashlib.sha1(data[0] + data[1]['Framed_IP_Address']).hexdigest())
             if self.macData is None:
-                logging.info('deamonMT: miss cache for mac: %s ip: %s, extracting data from DB' % (data[1]['User_Name'],data[1]['Framed_IP_Address']))
+                logging.info('deamonMT: miss cache for mac: %s ip: %s, extracting data from DB' % (data[1]['User_Name'], data[1]['Framed_IP_Address']))
                 while True:
-                    dataSQL=self.SQL.getDataFromDB(data[1]['User_Name'])
+                    dataSQL = self.SQL.getDataFromDB(data[1]['User_Name'])
                     if dataSQL is False:
                         time.sleep(5)
                     else:
@@ -352,35 +352,35 @@ class deamonMT(threading.Thread):
                             data[1].update({"warning":dataSQL["warning"]})
                             data[1].update({"nodename":dataSQL["nodename"]})
                             data[1].update({"mrt":dataSQL["mrt"]})
-                            self.cache.set(hashlib.sha1(data[0]+data[1]['Framed_IP_Address']).hexdigest(), data[1], self.time)
-                            self.macData=data[1]
+                            self.cache.set(hashlib.sha1(data[0] + data[1]['Framed_IP_Address']).hexdigest(), data[1], self.time)
+                            self.macData = data[1]
                         else:
                             # cant find mac in db, send info?
                             data[1].update({"nodeId":None})
-                            self.cache.set(hashlib.sha1(data[0]+data[1]['Framed_IP_Address']).hexdigest(), data[1], self.time)
-                            self.macData=data[1]
+                            self.cache.set(hashlib.sha1(data[0] + data[1]['Framed_IP_Address']).hexdigest(), data[1], self.time)
+                            self.macData = data[1]
                         break
             else:
-                logging.info('deamonMT: hit cache for mac: %s ip: %s, extracting data from memcached' % (data[1]['User_Name'],data[1]['Framed_IP_Address']))
-            execOnMT=None
+                logging.info('deamonMT: hit cache for mac: %s ip: %s, extracting data from memcached' % (data[1]['User_Name'], data[1]['Framed_IP_Address']))
+            execOnMT = None
             logging.debug(self.macData)                                    
             if self.macData['nodeId'] is not None and self.macData['nodename'] is not None and  self.macData['mrt'] is not None and self.is_valid_ipv4_address(self.macData['Framed_IP_Address']) and self.is_valid_ipv4_address(self.macData['NAS_IP_Address']):
                 
-                execOnMT ='/queue simple remove [find target='+str(self.macData['Framed_IP_Address'])+'/32]; '
-                execOnMT+='/ip firewall nat remove [find src-address="'+str(self.macData['Framed_IP_Address'])+'" and chain="warn"]; '
-                execOnMT+='/ip firewall address-list remove [find address="'+str(self.macData['Framed_IP_Address'])+'" and list="blacklist"]; '
-                execOnMT+="""/queue simple add name="""+str(self.macData['nodename'])+""" target="""+str(self.macData['Framed_IP_Address'])+"""/32 parent=none packet-marks="" priority=8/8 queue=s100/s100 limit-at=64k/64k max-limit="""+str(self.macData['mrt'])+""" burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s comment="""+str(self.macData['nodeId'])+"""; """    
+                execOnMT = '/queue simple remove [find target=' + str(self.macData['Framed_IP_Address']) + '/32]; '
+                execOnMT += '/ip firewall nat remove [find src-address="' + str(self.macData['Framed_IP_Address']) + '" and chain="warn"]; '
+                execOnMT += '/ip firewall address-list remove [find address="' + str(self.macData['Framed_IP_Address']) + '" and list="blacklist"]; '
+                execOnMT += """/queue simple add name=""" + str(self.macData['nodename']) + """ target=""" + str(self.macData['Framed_IP_Address']) + """/32 parent=none packet-marks="" priority=8/8 queue=s100/s100 limit-at=64k/64k max-limit=""" + str(self.macData['mrt']) + """ burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s comment=""" + str(time.time()) + """; """    
                 if self.macData['access'] == 0:
-                    execOnMT +="""/ip firewall address-list add list=blacklist address="""+str(self.macData['Framed_IP_Address'])+""" comment="""+str(self.macData['nodeId'])+"""; """
-                    if self.macData['warning']  == 1:
-                        execOnMT += """/ip firewall nat add chain=warn action=dst-nat to-addresses="""+self.lmswarn+""" to-ports=8001 protocol=tcp src-address="""+str(self.macData['Framed_IP_Address'])+""" limit=10/1h,1:packet log=no log-prefix="" comment="""+str(self.macData['nodeId'])+"""; """
+                    execOnMT += """/ip firewall address-list add list=blacklist address=""" + str(self.macData['Framed_IP_Address']) + """ comment=""" + str(self.macData['nodeId']) + """; """
+                    if self.macData['warning'] == 1:
+                        execOnMT += """/ip firewall nat add chain=warn action=dst-nat to-addresses=""" + self.lmswarn + """ to-ports=8001 protocol=tcp src-address=""" + str(self.macData['Framed_IP_Address']) + """ limit=10/1h,1:packet log=no log-prefix="" comment=""" + str(time.time()) + """; """
                 if self.macData['access'] == 1:  
                     if self.macData['warning'] == 1:
-                        execOnMT += """/ip firewall nat add chain=warn action=dst-nat to-addresses="""+self.lmswarn+""" to-ports=8001 protocol=tcp src-address="""+str(self.macData['Framed_IP_Address'])+""" limit=10/1h,1:packet log=no log-prefix="" comment="""+str(self.macData['nodeId'])+"""; """
+                        execOnMT += """/ip firewall nat add chain=warn action=dst-nat to-addresses=""" + self.lmswarn + """ to-ports=8001 protocol=tcp src-address=""" + str(self.macData['Framed_IP_Address']) + """ limit=10/1h,1:packet log=no log-prefix="" comment=""" + str(time.time()) + """; """
                 
-                logging.debug("deamonMT: Mikrotik commands for ip %s:\n %s" % (self.macData['NAS_IP_Address'],execOnMT))
+                logging.debug("deamonMT: Mikrotik commands for ip %s:\n %s" % (self.macData['NAS_IP_Address'], execOnMT))
                 
-                return (self.macData['NAS_IP_Address'],execOnMT)
+                return (self.macData['NAS_IP_Address'], execOnMT)
             else:
                 logging.info('deamonMT: incorrect data: nodeId, access, warning, nodename, mtr, NAS_IP_Address or Framed_IP_Address')
                 return False
@@ -388,7 +388,7 @@ class deamonMT(threading.Thread):
             logging.info('deamonMT: incorrect Framed_IP_Address or null')
             return False
         
-    def is_valid_ipv4_address(self,address):
+    def is_valid_ipv4_address(self, address):
         try:
             socket.inet_pton(socket.AF_INET, address)
         except AttributeError:  
@@ -399,20 +399,12 @@ class deamonMT(threading.Thread):
             return address.count('.') == 3
         except socket.error: 
             return False
-        return True#         if self.log is True:
-#             stdout = file(self.basePath + '/log/stdout.log', 'a')
-#             stderr = file(self.basePath + '/log/stderr.log', 'a')            
-#             with daemon.DaemonContext(stdout=stdout, stderr=stderr, working_directory=working_directory, pidfile=pidfile):
-#                 self.run()
-#         else:
-#             with daemon.DaemonContext(working_directory=working_directory, pidfile=pidfile):
-#                 self.run()
-        
+        return True
                     
     def loadConf(self):
         
         config = ConfigParser.ConfigParser()
-        config.readfp(open(self.basePath+'/conf/ldrm.conf'))
+        config.readfp(open(self.basePath + '/conf/ldrm.conf'))
         
         self.ip = config.get('memcached', 'ip')
         self.port = config.get('memcached', 'port')
@@ -426,19 +418,20 @@ class deamonMT(threading.Thread):
         self.portSsh = int(config.get('mt', 'port'))
         self.timeoutSsh = int(config.get('mt', 'timeout'))
         
-    def executeMT(self,execOnMT,ipToCon):        
-        i=0
+    def executeMT(self, execOnMT, ipToCon):        
+        i = 0
         while (True):
-            if i<3:
-                S=ssh(ipToCon,self.loginSsh, self.passwdSsh, int(self.portSsh), int(self.timeoutSsh))
+            if i < 3:
+                S = ssh(ipToCon, self.loginSsh, self.passwdSsh, int(self.portSsh), int(self.timeoutSsh))
                 if S.status is True:
                     S.sendCommand(execOnMT)
                     break
                 else:
                     time.sleep(5)
-                i+=1
+                i += 1
             else:
                 break
+
 
 class servertcp(threading.Thread):
         
@@ -463,9 +456,9 @@ class servertcp(threading.Thread):
                 try:
                     data = json.loads(client.recv(1024))
                     if data[0] == 'DATA':
-                        self.QH.add(hashlib.sha1(data[1]).hexdigest(),data[2])
+                        self.QH.add(hashlib.sha1(data[1]).hexdigest(), data[2])
                         client.send(json.dumps(['OK']))
-                        logging.info("servertcp: new data, mac: %s from %s" % (data[2]['User_Name'],ipPort[0]))
+                        logging.info("servertcp: new data, mac: %s from %s" % (data[2]['User_Name'], ipPort[0]))
                     else:
                         client.send(json.dumps(['BADCOMMAND']))
                     client.close    
@@ -481,10 +474,11 @@ class servertcp(threading.Thread):
             
     def loadConf(self):
         config = ConfigParser.ConfigParser()
-        config.readfp(open(self.basePath+'/conf/ldrm.conf'))
+        config.readfp(open(self.basePath + '/conf/ldrm.conf'))
         self.host = config.get('tcpserver', 'host')
         self.port = config.get('tcpserver', 'port')
         self.connectionTimeout = config.get('tcpserver', 'connectionTimeout')
+
         
 class drdDaemon:
         
@@ -494,25 +488,24 @@ class drdDaemon:
     
     def run(self):
         
-        if self.log=='debug':
+        if self.log == 'debug':
             logging.basicConfig(level=logging.DEBUG, format='%(relativeCreated)6d %(threadName)s %(message)s')
             logging.getLogger("paramiko").setLevel(logging.DEBUG)
-        elif self.log=='info':
+        elif self.log == 'info':
             logging.basicConfig(level=logging.INFO, format='%(relativeCreated)6d %(threadName)s %(message)s')
             logging.getLogger("paramiko").setLevel(logging.INFO)
-        elif self.log=='warn':
+        elif self.log == 'warn':
             logging.basicConfig(level=logging.WARN, format='%(relativeCreated)6d %(threadName)s %(message)s')
             logging.getLogger("paramiko").setLevel(logging.WARN)
-        elif self.log=='error':
+        elif self.log == 'error':
             logging.basicConfig(level=logging.ERROR, format='%(relativeCreated)6d %(threadName)s %(message)s')
             logging.getLogger("paramiko").setLevel(logging.ERROR)
-        elif self.log=='critical':
+        elif self.log == 'critical':
             logging.basicConfig(level=logging.CRITICAL, format='%(relativeCreated)6d %(threadName)s %(message)s')
             logging.getLogger("paramiko").setLevel(logging.CRITICAL)
         else:
             logging.basicConfig(level=logging.INFO, format='%(relativeCreated)6d %(threadName)s %(message)s')
             logging.getLogger("paramiko").setLevel(logging.INFO)
-        
         
 #         logging.basicConfig(level=logging.DEBUG, 
 #                             format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
@@ -522,7 +515,7 @@ class drdDaemon:
 
         logging.info("drdDaemon: start main thread")
 
-        QH=queueDrd()
+        QH = queueDrd()
         
         ST = servertcp(QH)
         ST.start()
@@ -539,15 +532,14 @@ class drdDaemon:
                 
     def loadConf(self):
         config = ConfigParser.ConfigParser()
-        config.readfp(open(self.basePath+'/conf/ldrm.conf'))
+        config.readfp(open(self.basePath + '/conf/ldrm.conf'))
         self.log = config.get('main', 'log')
-
 
     def start(self):
         """
         Start the daemon
         """
-        if os.path.isfile(self.basePath+'/conf/ldrm.conf') is False:
+        if os.path.isfile(self.basePath + '/conf/ldrm.conf') is False:
             print 'drdDaemon: Where is conf, should be in main directory\nfile: ldrm.conf'
             sys.exit(1)
         
@@ -564,8 +556,8 @@ class drdDaemon:
             sys.stderr.write(message % pidfile)
             sys.exit(1)
         
-        working_directory=self.basePath
-        pidfile=daemon.pidfile.PIDLockFile(pidfile)
+        working_directory = self.basePath
+        pidfile = daemon.pidfile.PIDLockFile(pidfile)
 
         with daemon.DaemonContext(working_directory=working_directory, pidfile=pidfile):
                 self.run()
@@ -601,6 +593,7 @@ class drdDaemon:
             else:
                 print str(err)
                 sys.exit(1)
+
     
 if __name__ == "__main__":
     basePath = os.path.dirname(os.path.abspath(__file__))
