@@ -3,17 +3,16 @@
 
 import ConfigParser
 from collections import deque
+import datetime
 import hashlib
 import json
 import logging
 import os.path
-import select
 from signal import SIGTERM
 import socket
 import sys
 import threading
 import time
-import datetime
 
 import daemon.pidfile
 import memcache
@@ -21,7 +20,6 @@ import mysql.connector
 import psycopg2
 import ssh2
 from ssh2.session import Session
-
 
 # pylibmc
 class ssh:
@@ -59,7 +57,6 @@ class ssh:
 
         
 class conSQL:
-    
     def __init__(self):
         self.basePath = basePath      
         self.loadConf()
@@ -247,7 +244,6 @@ class conSQL:
 
 
 class queueDrd:
-    
     queueDrd = deque([])
     
     dataClient = {}
@@ -295,7 +291,7 @@ class deamonMT(threading.Thread):
         self.SQL = conSQL()
     
     def run(self):
-        logging.info("deamonMT: ready and waiting")
+        logging.info("deamonMT: ready and waiting..")
         while True:
             if len(self.QH.queueDrd) > 0:
                 timeMaxScript = 5
@@ -366,7 +362,7 @@ class deamonMT(threading.Thread):
             execOnMT = None
             logging.debug(self.macData)                                    
             if self.macData['nodeId'] is not None and self.macData['nodename'] is not None and  self.macData['mrt'] is not None and self.is_valid_ipv4_address(self.macData['Framed_IP_Address']) and self.is_valid_ipv4_address(self.macData['NAS_IP_Address']):
-                datenow=datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d')
+                datenow = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d')
                 execOnMT = '/queue simple remove [find target=' + str(self.macData['Framed_IP_Address']) + '/32]; '
                 execOnMT += '/ip firewall nat remove [find src-address="' + str(self.macData['Framed_IP_Address']) + '" and chain="warn"]; '
                 execOnMT += '/ip firewall address-list remove [find address="' + str(self.macData['Framed_IP_Address']) + '" and list="blacklist"]; '
@@ -449,7 +445,7 @@ class servertcp(threading.Thread):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind((self.host, int(self.port)))
         s.listen(5)
-        logging.info("servertcp: ready and waiting on port %s" % (self.port))
+        logging.info("servertcp(on port %s): ready and waiting.." % (self.port))
         while True:
             client, ipPort = s.accept()
             client.settimeout(int(self.connectionTimeout))
@@ -481,40 +477,65 @@ class servertcp(threading.Thread):
         self.connectionTimeout = config.get('tcpserver', 'connectionTimeout')
 
         
-class drdDaemon:
+class ldrm:
         
     def __init__(self, basePath):
         self.basePath = basePath
         self.loadConf()
     
     def run(self):
-        
-        if self.log == 'debug':
-            logging.basicConfig(level=logging.DEBUG, format='%(relativeCreated)6d %(threadName)s %(message)s')
-            logging.getLogger("paramiko").setLevel(logging.DEBUG)
-        elif self.log == 'info':
-            logging.basicConfig(level=logging.INFO, format='%(relativeCreated)6d %(threadName)s %(message)s')
-            logging.getLogger("paramiko").setLevel(logging.INFO)
-        elif self.log == 'warn':
-            logging.basicConfig(level=logging.WARN, format='%(relativeCreated)6d %(threadName)s %(message)s')
-            logging.getLogger("paramiko").setLevel(logging.WARN)
-        elif self.log == 'error':
-            logging.basicConfig(level=logging.ERROR, format='%(relativeCreated)6d %(threadName)s %(message)s')
-            logging.getLogger("paramiko").setLevel(logging.ERROR)
-        elif self.log == 'critical':
-            logging.basicConfig(level=logging.CRITICAL, format='%(relativeCreated)6d %(threadName)s %(message)s')
-            logging.getLogger("paramiko").setLevel(logging.CRITICAL)
+        if 'debug' == sys.argv[1]:
+            if self.log == 'debug':
+                logging.basicConfig(level=logging.DEBUG, format='%(relativeCreated)6d %(threadName)s %(message)s')
+            elif self.log == 'info':
+                logging.basicConfig(level=logging.INFO, format='%(relativeCreated)6d %(threadName)s %(message)s')
+            elif self.log == 'warn':
+                logging.basicConfig(level=logging.WARN, format='%(relativeCreated)6d %(threadName)s %(message)s')
+            elif self.log == 'error':
+                logging.basicConfig(level=logging.ERROR, format='%(relativeCreated)6d %(threadName)s %(message)s')
+            elif self.log == 'critical':
+                logging.basicConfig(level=logging.CRITICAL, format='%(relativeCreated)6d %(threadName)s %(message)s')
+            else:
+                logging.basicConfig(level=logging.INFO, format='%(relativeCreated)6d %(threadName)s %(message)s')
         else:
-            logging.basicConfig(level=logging.INFO, format='%(relativeCreated)6d %(threadName)s %(message)s')
-            logging.getLogger("paramiko").setLevel(logging.INFO)
-        
-#         logging.basicConfig(level=logging.DEBUG, 
-#                             format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-#                             datefmt='%d-%m-%d %H:%M',
-#                             filename='log/drd.log',
-#                             filemode='w')
+            if self.log == 'debug':
+                logging.basicConfig(level=logging.DEBUG,
+                            format='%(asctime)s %(name)-1s %(levelname)-1s %(message)s',
+                            datefmt='%d-%m-%d %H:%M',
+                            filename=self.logFile,
+                            filemode='w')
+            elif self.log == 'info':
+                logging.basicConfig(level=logging.INFO,
+                            format='%(asctime)s %(name)-1s %(levelname)-1s %(message)s',
+                            datefmt='%d-%m-%d %H:%M',
+                            filename=self.logFile,
+                            filemode='w')
+            elif self.log == 'warn':
+                logging.basicConfig(level=logging.WARN,
+                            format='%(asctime)s %(name)-1s %(levelname)-1s %(message)s',
+                            datefmt='%d-%m-%d %H:%M',
+                            filename=self.logFile,
+                            filemode='w')
+            elif self.log == 'error':
+                logging.basicConfig(level=logging.ERROR,
+                            format='%(asctime)s %(name)-1s %(levelname)-1s %(message)s',
+                            datefmt='%d-%m-%d %H:%M',
+                            filename=self.logFile,
+                            filemode='w')
+            elif self.log == 'critical':
+                logging.basicConfig(level=logging.CRITICAL,
+                            format='%(asctime)s %(name)-1s %(levelname)-1s %(message)s',
+                            datefmt='%d-%m-%d %H:%M',
+                            filename=self.logFile,
+                            filemode='w')
+            else:
+                logging.basicConfig(level=logging.INFO,
+                            format='%(asctime)s %(name)-1s %(levelname)-1s %(message)s',
+                            datefmt='%d-%m-%d %H:%M',
+                            filename=self.logFile,
+                            filemode='w')
 
-        logging.info("drdDaemon: start main thread")
+        logging.info("ldrm: start main thread")
 
         QH = queueDrd()
         
@@ -528,23 +549,27 @@ class drdDaemon:
             try:
                 time.sleep(1)
             except KeyboardInterrupt:
-                break
-        logging.info("drdDaemon: stop main thread")
+                if 'debug' == sys.argv[1]:
+                    break
+                    
+        logging.info("ldrm: stop main thread")
                 
     def loadConf(self):
         config = ConfigParser.ConfigParser()
         config.readfp(open(self.basePath + '/conf/ldrm.conf'))
         self.log = config.get('main', 'log')
+        self.logToFile = config.get('main', 'logToFile')
+        self.logFile = config.get('main', 'logFile')
 
     def start(self):
         """
         Start the daemon
         """
         if os.path.isfile(self.basePath + '/conf/ldrm.conf') is False:
-            print 'drdDaemon: Where is conf, should be in main directory\nfile: ldrm.conf'
+            print 'ldrm: Where is conf, should be in main directory\nfile: ldrm.conf'
             sys.exit(1)
         
-        pidfile = '/tmp/drd.pid'
+        pidfile = '/tmp/ldrm.pid'
         try:
             pf = file(pidfile, 'r')
             pid = int(pf.read().strip())
@@ -553,7 +578,7 @@ class drdDaemon:
             pid = None
     
         if pid:
-            message = "drdDaemon: pidfile %s already exist. Daemon already running?"
+            message = "ldrm: pidfile %s already exist. Daemon already running?"
             sys.stderr.write(message % pidfile)
             sys.exit(1)
         
@@ -568,7 +593,7 @@ class drdDaemon:
         Stop the daemon
         """        
 
-        pidfile = '/tmp/drd.pid'
+        pidfile = '/tmp/ldrm.pid'
         
         try:
             pf = file(pidfile, 'r')
@@ -600,11 +625,11 @@ if __name__ == "__main__":
     basePath = os.path.dirname(os.path.abspath(__file__))
     if len(sys.argv) == 2:
         if 'debug' == sys.argv[1]:
-            drdDaemon(basePath).run()
+            ldrm(basePath).run()
         elif 'start' == sys.argv[1]:            
-            drdDaemon(basePath).start()
+            ldrm(basePath).start()
         elif 'stop' == sys.argv[1]:
-            drdDaemon(basePath).stop()
+            ldrm(basePath).stop()
         elif 'help' == sys.argv[1]:
             print "usage: %s \n\tstart \t\t-> start deamon \n\tstop \t\t-> stop deamon \n\tdebug \t-> non-daemon mode \n\thelp \t-> show this" % sys.argv[0]
             sys.exit(2)
