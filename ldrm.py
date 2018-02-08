@@ -558,7 +558,6 @@ class ldrm:
         config = ConfigParser.ConfigParser()
         config.readfp(open(self.basePath + '/conf/ldrm.conf'))
         self.log = config.get('main', 'log')
-        self.logToFile = config.get('main', 'logToFile')
         self.logFile = config.get('main', 'logFile')
 
     def start(self):
