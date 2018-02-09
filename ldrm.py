@@ -290,37 +290,20 @@ class deamonMT(threading.Thread):
         
         self.SQL = conSQL()
     
+    
     def run(self):
         logging.info("deamonMT: ready and waiting..")
+        
         while True:
             if len(self.QH.queueDrd) > 0:
-                timeMaxScript = 5
-                imax = 10
-                timeScript = 0
-                i = 0
-                MTCommands = {}
-                while True:
-                    ts = time.time()
-                    if timeScript < timeMaxScript and i < imax:
-                        data = self.QH.fetch()
-                        if data is not None:
-                            commands = self.createMTCommands(data)
-                            if commands is not False:
-                                if commands[0] in MTCommands:
-                                    MTCommands[commands[0]] += commands[1]
-                                else:
-                                    MTCommands.update({commands[0]:commands[1]})
-                                i += 1
+                data = self.QH.fetch()
+                if data is not None:
+                    if self.api == 'ssh':
+                        MTCommands=self.createMTCommands(data)
+                        logging.info("deamonMT: sending commands to execute on Mikrotik :\n" + str(MTCommands))
+                        self.executeMT(MTCommands[1],MTCommands[0])
                     else:
-                        break
-                    timeScript += time.time() - ts
-                logging.info("deamonMT: sending commands to execute on Mikrotik :\n" + str(MTCommands))
-                if len(MTCommands) > 0 :
-                    for i in MTCommands:
-                        if self.api == 'ssh':
-                            self.executeMT(MTCommands[i], i)
-                        else:
-                            logging.error('deamonMT: incorrect api: %s' % (self.api))
+                        logging.error('deamonMT: incorrect api: %s' % (self.api))
             ql = len(self.QH.queueDrd)
             if ql == 0:
                 time.sleep(60)
@@ -330,8 +313,11 @@ class deamonMT(threading.Thread):
                 time.sleep(15)
             elif ql > 0 and ql < 300:
                 time.sleep(5)
-            else:
+            elif ql > 0 and ql < 500:
                 time.sleep(1)
+            else:
+                time.sleep(0.1)
+                    
     
     def createMTCommands(self, data):
         if self.is_valid_ipv4_address(data[1]['Framed_IP_Address']):
