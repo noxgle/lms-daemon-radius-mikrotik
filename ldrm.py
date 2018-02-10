@@ -300,21 +300,24 @@ class deamonMT(threading.Thread):
                 if data is not None:
                     if self.api == 'ssh':
                         MTCommands=self.createMTCommands(data)
-                        logging.info("deamonMT: sending commands to execute on Mikrotik :\n" + str(MTCommands))
-                        self.executeMT(MTCommands[1],MTCommands[0])
+                        if MTCommands is not False:
+                            self.executeMT(MTCommands[1],MTCommands[0])
+                            logging.info("deamonMT: sending commands to execute on Mikrotik :\n" + str(MTCommands))
                     else:
                         logging.error('deamonMT: incorrect api: %s' % (self.api))
             ql = len(self.QH.queueDrd)
             if ql == 0:
                 time.sleep(60)
-            elif ql > 0 and ql < 10:
+            elif ql == 1:
                 time.sleep(30)
-            elif ql > 0 and ql < 100:
+            elif ql < 10:
                 time.sleep(15)
-            elif ql > 0 and ql < 300:
+            elif ql > 0 and ql < 50:
                 time.sleep(5)
-            elif ql > 0 and ql < 500:
+            elif ql > 0 and ql < 100:
                 time.sleep(1)
+            elif ql > 0 and ql < 300:
+                time.sleep(0.5)
             else:
                 time.sleep(0.1)
                     
