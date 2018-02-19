@@ -8,7 +8,7 @@ ldrm (lms-daemon-radius-mikrotik) is a demon to the LMS system (http://www.lms.o
 # REQUIREMENTS
 - installed python 2.7
 - installed pip and virtualenv
-- installed memcached services, on debian: apt-get install memcached
+- you can install memcached services, on debian: apt-get install memcached for better performance
 
 # HOW TO INSTALL
 see install.txt

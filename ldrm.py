@@ -353,19 +353,19 @@ class deamonMT(threading.Thread):
             if self.macData['nodeId'] is not None and self.macData['nodename'] is not None and  self.macData['mrt'] is not None and self.is_valid_ipv4_address(self.macData['Framed_IP_Address']) and self.is_valid_ipv4_address(self.macData['NAS_IP_Address']):
                 datenow = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d')
                 execOnMT = '/queue simple remove [find target=' + str(self.macData['Framed_IP_Address']) + '/32]; '                   
-                execOnMT += '/ip firewall nat remove [find src-address="' + str(self.macData['Framed_IP_Address']) + '" and chain="warn"]; '
-                execOnMT += '/ip firewall address-list remove [find address="' + str(self.macData['Framed_IP_Address']) + '" and list="blacklist"]; '
+                execOnMT += '/ip firewall nat remove [find src-address="' + str(self.macData['Framed_IP_Address']) + '" and chain="'+self.warnchainName+'"]; '
+                execOnMT += '/ip firewall address-list remove [find address="' + str(self.macData['Framed_IP_Address']) + '" and list="'+self.blockListName+'"]; '
                 if str(self.macData['mrt']) =='0k/0k': 
                     execOnMT += """/queue simple add name=""" + str(self.macData['nodename']) + """ target=""" + str(self.macData['Framed_IP_Address']) + """/32 parent=none packet-marks="" priority=8/8 queue=s100/s100 limit-at=64k/64k max-limit=64k/64k burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s comment=""" + str(datenow) + """; """    
                 else:
                     execOnMT += """/queue simple add name=""" + str(self.macData['nodename']) + """ target=""" + str(self.macData['Framed_IP_Address']) + """/32 parent=none packet-marks="" priority=8/8 queue=s100/s100 limit-at=64k/64k max-limit=""" + str(self.macData['mrt']) + """ burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s comment=""" + str(datenow) + """; """ 
                 if self.macData['access'] == 0:
-                    execOnMT += """/ip firewall address-list add list=blacklist address=""" + str(self.macData['Framed_IP_Address']) + """ comment=""" + str(self.macData['nodeId']) + """; """
+                    execOnMT += """/ip firewall address-list add list="""+self.blockListName+"""" address=""" + str(self.macData['Framed_IP_Address']) + """ comment=""" + str(self.macData['nodeId']) + """; """
                     if self.macData['warning'] == 1:
-                        execOnMT += """/ip firewall nat add chain=warn action=dst-nat to-addresses=""" + self.lmswarn + """ to-ports=8001 protocol=tcp src-address=""" + str(self.macData['Framed_IP_Address']) + """ limit=10/1h,1:packet log=no log-prefix="" comment=""" + str(datenow) + """; """
+                        execOnMT += """/ip firewall nat add chain="""+self.warnchainName+""" action=dst-nat to-addresses=""" + self.lmswarn + """ to-ports=8001 protocol=tcp src-address=""" + str(self.macData['Framed_IP_Address']) + """ limit=10/1h,1:packet log=no log-prefix="" comment=""" + str(datenow) + """; """
                 if self.macData['access'] == 1:  
                     if self.macData['warning'] == 1:
-                        execOnMT += """/ip firewall nat add chain=warn action=dst-nat to-addresses=""" + self.lmswarn + """ to-ports=8001 protocol=tcp src-address=""" + str(self.macData['Framed_IP_Address']) + """ limit=10/1h,1:packet log=no log-prefix="" comment=""" + str(datenow) + """; """
+                        execOnMT += """/ip firewall nat add chain="""+self.warnchainName+""" action=dst-nat to-addresses=""" + self.lmswarn + """ to-ports=8001 protocol=tcp src-address=""" + str(self.macData['Framed_IP_Address']) + """ limit=10/1h,1:packet log=no log-prefix="" comment=""" + str(datenow) + """; """
                 
                 logging.debug("deamonMT: Mikrotik commands for ip %s:\n %s" % (self.macData['NAS_IP_Address'], execOnMT))
                 
@@ -406,6 +406,9 @@ class deamonMT(threading.Thread):
         self.passwdSsh = config.get('mt', 'pass')
         self.portSsh = int(config.get('mt', 'port'))
         self.timeoutSsh = int(config.get('mt', 'timeout'))
+        
+        self.warnchainName = config.get('mt', 'warnchainName')
+        self.blockListName = config.get('mt', 'blockListName')
         
     def executeMT(self, execOnMT, ipToCon):        
         i = 0
