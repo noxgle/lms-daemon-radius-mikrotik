@@ -360,7 +360,7 @@ class deamonMT(threading.Thread):
                 else:
                     execOnMT += """/queue simple add name=""" + str(self.macData['nodename']) + """ target=""" + str(self.macData['Framed_IP_Address']) + """/32 parent=none packet-marks="" priority=8/8 queue=s100/s100 limit-at=64k/64k max-limit=""" + str(self.macData['mrt']) + """ burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s comment=""" + str(datenow) + """; """ 
                 if self.macData['access'] == 0:
-                    execOnMT += """/ip firewall address-list add list="""+self.blockListName+"""" address=""" + str(self.macData['Framed_IP_Address']) + """ comment=""" + str(self.macData['nodeId']) + """; """
+                    execOnMT += """/ip firewall address-list add list="""+self.blockListName+""" address=""" + str(self.macData['Framed_IP_Address']) + """ comment=""" + str(self.macData['nodeId']) + """; """
                     if self.macData['warning'] == 1:
                         execOnMT += """/ip firewall nat add chain="""+self.warnchainName+""" action=dst-nat to-addresses=""" + self.lmswarn + """ to-ports=8001 protocol=tcp src-address=""" + str(self.macData['Framed_IP_Address']) + """ limit=10/1h,1:packet log=no log-prefix="" comment=""" + str(datenow) + """; """
                 if self.macData['access'] == 1:  
