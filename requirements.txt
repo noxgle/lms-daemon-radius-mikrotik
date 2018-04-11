@@ -4,5 +4,6 @@ daemon
 pidfile
 python-daemon
 python-memcached
-psycopg2
+#psycopg2
+psycopg2-binary
 ssh2-python
