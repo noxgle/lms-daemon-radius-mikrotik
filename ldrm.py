@@ -54,7 +54,7 @@ class ssh:
             logging.debug("ssh: client %s" % (data))
             size, data = self.client.read()
         logging.info("ssh: commands has been sent, SUCCESS")
-
+        self.client.close()
         
 class conSQL:
     def __init__(self):
@@ -250,29 +250,39 @@ class queueDrd:
     
     size = 1000
     
-    def getAllItemInQueue(self):
-        return list(self.queueDrd)
+    lock = threading.Lock()
     
+#     def getAllItemInQueue(self):
+#         return list(self.queueDrd)
+ 
     def fetch(self):
-        if len(self.queueDrd) > 0:            
-            machash = self.queueDrd.popleft()
-            data = self.dataClient.pop(machash)
+        if len(self.queueDrd) > 0:     
+            self.lock.acquire()
+            try:
+                machash = self.queueDrd.popleft()
+                data = self.dataClient.pop(machash)
+            finally:
+                self.lock.release()
             return [machash, data]
         else:
             return None
     
     def add(self, machash, data):
-        
         if len(self.queueDrd) < self.size:
-            if machash not in self.queueDrd:
-                self.queueDrd.append(machash)
-                self.dataClient.update({machash:data})
-     
-    def remove(self, machash):
-        if machash in self.queueDrd:
-            self.queueDrd.remove(machash)
-        if machash in self.dataClient:
-            del self.dataClient[machash]
+            
+            self.lock.acquire()
+            try:  
+                if machash not in self.queueDrd:
+                    self.queueDrd.append(machash)
+                    self.dataClient.update({machash:data})
+            finally:
+                self.lock.release()
+                
+#     def remove(self, machash):
+#         if machash in self.queueDrd:
+#             self.queueDrd.remove(machash)
+#         if machash in self.dataClient:
+#             del self.dataClient[machash]
             
      
 class deamonMT(threading.Thread):
@@ -293,9 +303,9 @@ class deamonMT(threading.Thread):
     
     def run(self):
         logging.info("deamonMT: ready and waiting..")
-        
+        ql=0
         while True:
-            if len(self.QH.queueDrd) > 0:
+            if ql > 0:
                 data = self.QH.fetch()
                 if data is not None:
                     if self.api == 'ssh':
@@ -306,6 +316,7 @@ class deamonMT(threading.Thread):
                     else:
                         logging.error('deamonMT: incorrect api: %s' % (self.api))
             ql = len(self.QH.queueDrd)
+            logging.info("deamonMT: size of queue: %s\n" % (ql))
             if ql == 0:
                 time.sleep(60)
             elif ql == 1:
