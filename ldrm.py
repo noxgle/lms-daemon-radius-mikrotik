@@ -28,17 +28,17 @@ class ssh:
     
     def __init__(self, address, username, password, port, timeout):
         logging.info("ssh: connecting to server: %s " % (address))
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout)
         try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
             sock.connect((address, port))
         except:
             self.status = False
             logging.warn("ssh: can't connect to server: %s " % (address))
         else:
-            s = Session()
-            s.handshake(sock)
             try:
+                s = Session()
+                s.handshake(sock)
                 s.userauth_password(username, password)
             except:
                 self.status = False
@@ -251,10 +251,7 @@ class queueDrd:
     size = 1000
     
     lock = threading.Lock()
-    
-#     def getAllItemInQueue(self):
-#         return list(self.queueDrd)
- 
+
     def fetch(self):
         if len(self.queueDrd) > 0:     
             self.lock.acquire()
@@ -278,12 +275,6 @@ class queueDrd:
             finally:
                 self.lock.release()
                 
-#     def remove(self, machash):
-#         if machash in self.queueDrd:
-#             self.queueDrd.remove(machash)
-#         if machash in self.dataClient:
-#             del self.dataClient[machash]
-            
      
 class deamonMT(threading.Thread):
         
