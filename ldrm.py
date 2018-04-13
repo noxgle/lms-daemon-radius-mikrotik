@@ -307,7 +307,7 @@ class deamonMT(threading.Thread):
                     else:
                         logging.error('deamonMT: incorrect api: %s' % (self.api))
             ql = len(self.QH.queueDrd)
-            logging.info("deamonMT: size of queue: %s\n" % (ql))
+            logging.info("deamonMT: size of queue: %s" % (ql))
             if ql == 0:
                 time.sleep(60)
             elif ql == 1:
