@@ -22,39 +22,6 @@ import ssh2
 from ssh2.session import Session
 #
 # pylibmc
-class ssh:
-    client = None
-    status = None
-    
-    def __init__(self, address, username, password, port, timeout):
-        logging.info("ssh: connecting to server: %s " % (address))
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(timeout)
-            sock.connect((address, port))
-        except:
-            self.status = False
-            logging.warn("ssh: can't connect to server: %s " % (address))
-        else:
-            try:
-                s = Session()
-                s.handshake(sock)
-                s.userauth_password(username, password)
-            except:
-                self.status = False
-                logging.warn("ssh: bad login or password: %s " % (address))
-            else:
-                self.client = s.open_session()
-                self.status = True
-                
-    def sendCommand(self, command):
-        self.client.execute(command)
-        size, data = self.client.read()
-        while size > 0:
-            logging.debug("ssh: client %s" % (data))
-            size, data = self.client.read()
-        logging.info("ssh: commands has been sent, SUCCESS")
-        self.client.close()
         
 class conSQL:
     def __init__(self):
@@ -290,6 +257,8 @@ class deamonMT(threading.Thread):
         self.QH = QH
         
         self.SQL = conSQL()
+        
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
     
     def run(self):
@@ -302,8 +271,8 @@ class deamonMT(threading.Thread):
                     if self.api == 'ssh':
                         MTCommands=self.createMTCommands(data)
                         if MTCommands is not False:
-                            self.executeMT(MTCommands[1],MTCommands[0])
                             logging.info("deamonMT: sending commands to execute on Mikrotik :\n" + str(MTCommands))
+                            self.executeMT(MTCommands[1],MTCommands[0])
                     else:
                         logging.error('deamonMT: incorrect api: %s' % (self.api))
             ql = len(self.QH.queueDrd)
@@ -412,20 +381,40 @@ class deamonMT(threading.Thread):
         self.warnchainName = config.get('mt', 'warnchainName')
         self.blockListName = config.get('mt', 'blockListName')
         
-    def executeMT(self, execOnMT, ipToCon):        
+    def executeMT(self, execOnMT, ipToCon):
+        host = ipToCon
+        user = self.loginSsh
+        passwd = self.passwdSsh
+        port = int(self.portSsh)
+        timeout = self.timeoutSsh
+               
         i = 0
         while (True):
             if i < 3:
-                S = ssh(ipToCon, self.loginSsh, self.passwdSsh, int(self.portSsh), int(self.timeoutSsh))
-                if S.status is True:
-                    S.sendCommand(execOnMT)
-                    break
+                try:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(timeout)
+                    sock.connect((host, port))
+                    session = Session()
+                    session.handshake(sock)
+                    session.userauth_password(user, passwd)
+                    channel = session.open_session()
+                    channel.execute(execOnMT)
+                    channel.wait_eof()
+                    channel.close()
+                    channel.wait_closed()
+                except Exception as e:
+                    logging.warn('deamonMT: %s', (e))
                 else:
-                    time.sleep(5)
+                    logging.info('deamonMT: ssh commands has been sent, SUCCESS')
+                    break
+                finally:
+                    sock.close()
+                time.sleep(1)    
                 i += 1
             else:
-                break
-
+                logging.info("deamonMT: ssh can't connect to host: %s", (host))
+                break 
 
 class servertcp(threading.Thread):
         
