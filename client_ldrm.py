@@ -1,6 +1,6 @@
 #!venv/bin/python
 # -*- coding: utf-8 -*-
-
+#
 import json
 from socket import *
 import sys
