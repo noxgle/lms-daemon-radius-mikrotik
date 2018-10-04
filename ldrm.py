@@ -323,7 +323,8 @@ class deamonMT(threading.Thread):
             logging.debug(self.macData)                                    
             if self.macData['nodeId'] is not None and self.macData['nodename'] is not None and  self.macData['mrt'] is not None and self.is_valid_ipv4_address(self.macData['Framed_IP_Address']) and self.is_valid_ipv4_address(self.macData['NAS_IP_Address']):
                 datenow = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d')
-                execOnMT = '/queue simple remove [find target=' + str(self.macData['Framed_IP_Address']) + '/32]; '                   
+                execOnMT = '/queue simple remove [find target=' + str(self.macData['Framed_IP_Address']) + '/32]; '  
+                execOnMT += '/queue simple remove [find name=%s]; ' % (str(self.macData['nodename']))                
                 execOnMT += '/ip firewall nat remove [find src-address="' + str(self.macData['Framed_IP_Address']) + '" and chain="'+self.warnchainName+'"]; '
                 execOnMT += '/ip firewall address-list remove [find address="' + str(self.macData['Framed_IP_Address']) + '" and list="'+self.blockListName+'"]; '
                 if str(self.macData['mrt']) =='0k/0k': 
