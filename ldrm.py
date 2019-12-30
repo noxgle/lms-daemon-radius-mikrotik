@@ -616,8 +616,11 @@ if __name__ == "__main__":
             ldrm(basePath).start()
         elif 'stop' == sys.argv[1]:
             ldrm(basePath).stop()
+        elif 'restart' == sys.argv[1]:
+            ldrm(basePath).stop()
+            ldrm(basePath).start()
         elif 'help' == sys.argv[1]:
-            print "usage: %s \n\tstart \t\t-> start deamon \n\tstop \t\t-> stop deamon \n\tdebug \t-> non-daemon mode \n\thelp \t-> show this" % sys.argv[0]
+            print "usage: %s \n\trestart \t\t-> restart deamon \n\tstart \t\t-> start deamon \n\tstop \t\t-> stop deamon \n\tdebug \t-> non-daemon mode \n\thelp \t-> show this" % sys.argv[0]
             sys.exit(2)
         else:
             print "Unknown command"
