@@ -540,10 +540,12 @@ class ldrm:
                     break
 
             if ST.is_alive() is False:
+                logging.error("ldrm: threads servertcp is down, starting new")
                 ST = servertcp(QH)
                 ST.start()
 
             if DMT.is_alive() is False:
+                logging.error("ldrm: threads deamonMT is down, starting new")
                 DMT = deamonMT(QH)
                 DMT.start()
                     
