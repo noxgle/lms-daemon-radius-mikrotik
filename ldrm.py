@@ -638,4 +638,4 @@ if __name__ == "__main__":
         sys.exit(0)
     else:
         print "usage: %s \n\tstart \t-> start deamon \n\tstop \t-> stop deamon \n\tdebug \t-> non-daemon mode \n\thelp \t-> show this" % sys.argv[0]
-        sys.exit(2)   
+        sys.exit(2)
