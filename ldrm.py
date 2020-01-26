@@ -538,6 +538,14 @@ class ldrm:
             except KeyboardInterrupt:
                 if 'debug' == sys.argv[1]:
                     break
+
+            if ST.is_alive() is False:
+                ST = servertcp(QH)
+                ST.start()
+
+            if DMT.is_alive() is False:
+                DMT = deamonMT(QH)
+                DMT.start()
                     
         logging.info("ldrm: stop main thread")
                 
