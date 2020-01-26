@@ -540,10 +540,12 @@ class ldrm:
                     break
 
             if ST.is_alive() is False:
+                logging.critical("ldrm: servertcp is down, strating new")
                 ST = servertcp(QH)
                 ST.start()
 
             if DMT.is_alive() is False:
+                logging.critical("ldrm: deamonMT is down, strating new")
                 DMT = deamonMT(QH)
                 DMT.start()
                     
