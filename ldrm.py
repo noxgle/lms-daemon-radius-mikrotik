@@ -176,19 +176,21 @@ class conSQL:
     def selectMySQL(self, query):
         try:
             cnx = mysql.connector.connect(host=self.ip, database=self.dbname, user=self.login, password=self.passwd)
+        except Exception as e:
+            logging.error('conSQL: ' + str(e))
+            return False
+        else:
+            cursor = cnx.cursor()
             try:
-                cursor = cnx.cursor()
                 cursor.execute(query)
-            except:
-                raise
+            except Exception as e:
+                logging.error('conSQL: ' + str(e))
+                return False
             else:
                 results = cursor.fetchall()
                 return results
             finally:
                 cnx.close()
-        except Exception as e:
-            logging.error('conSQL: ' + str(e))
-            return False
 
     def selectPG(self, query):
         try:
